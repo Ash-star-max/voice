@@ -1,0 +1,223 @@
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Details Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"] {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .voice-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .voice-btn.recording {
+            background-color: #f44336;
+        }
+        .submit-btn {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Personal Details Form</h1>
+    <form id="personalDetailsForm">
+        <div class="form-group">
+            <label for="fullName">Full Name</label>
+            <div class="input-group">
+                <input type="text" id="fullName" name="fullName" required>
+                <button type="button" class="voice-btn" data-field="fullName">
+                    🎤 Voice Input
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <div class="input-group">
+                <input type="email" id="email" name="email" required>
+                <button type="button" class="voice-btn" data-field="email">
+                    🎤 Voice Input
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="phoneNumber">Phone Number</label>
+            <div class="input-group">
+                <input type="tel" id="phoneNumber" name="phoneNumber" required>
+                <button type="button" class="voice-btn" data-field="phoneNumber">
+                    🎤 Voice Input
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="homeAddress">Home Address</label>
+            <div class="input-group">
+                <input type="text" id="homeAddress" name="homeAddress" required>
+                <button type="button" class="voice-btn" data-field="homeAddress">
+                    🎤 Voice Input
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="occupation">Occupation</label>
+            <div class="input-group">
+                <input type="text" id="occupation" name="occupation" required>
+                <button type="button" class="voice-btn" data-field="occupation">
+                    🎤 Voice Input
+                </button>
+            </div>
+        </div>
+
+        <button type="submit" class="submit-btn">Submit</button>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let recognition = null;
+            let currentField = null;
+
+            // Initialize speech recognition
+            function initializeSpeechRecognition() {
+                if ('webkitSpeechRecognition' in window) {
+                    recognition = new webkitSpeechRecognition();
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
+                    recognition.lang = 'en-US';
+
+                    recognition.onresult = function(event) {
+                        const transcript = event.results[0][0].transcript;
+                        if (currentField) {
+                            document.getElementById(currentField).value = transcript;
+                        }
+                    };
+
+                    recognition.onerror = function(event) {
+                        console.error('Speech recognition error:', event.error);
+                        stopRecording();
+                    };
+
+                    recognition.onend = function() {
+                        stopRecording();
+                    };
+                } else {
+                    alert('Speech recognition is not supported in your browser.');
+                }
+            }
+
+            // Start recording
+            function startRecording(fieldId) {
+                if (!recognition) {
+                    initializeSpeechRecognition();
+                }
+                currentField = fieldId;
+                try {
+                    recognition.start();
+                    document.querySelector(`[data-field="${fieldId}"]`).classList.add('recording');
+                } catch (error) {
+                    console.error('Speech recognition error:', error);
+                }
+            }
+
+            // Stop recording
+            function stopRecording() {
+                if (recognition) {
+                    try {
+                        recognition.stop();
+                    } catch (error) {
+                        console.error('Error stopping speech recognition:', error);
+                    }
+                }
+                if (currentField) {
+                    document.querySelector(`[data-field="${currentField}"]`).classList.remove('recording');
+                }
+                currentField = null;
+            }
+
+            // Add click handlers for voice input buttons
+            document.querySelectorAll('.voice-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const fieldId = this.dataset.field;
+                    if (currentField === fieldId) {
+                        stopRecording();
+                    } else {
+                        if (currentField) {
+                            stopRecording();
+                        }
+                        startRecording(fieldId);
+                    }
+                });
+            });
+
+            // Handle form submission
+            document.getElementById('personalDetailsForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const formData = {
+                    fullName: document.getElementById('fullName').value,
+                    email: document.getElementById('email').value,
+                    phoneNumber: document.getElementById('phoneNumber').value,
+                    homeAddress: document.getElementById('homeAddress').value,
+                    occupation: document.getElementById('occupation').value
+                };
+
+                try {
+                    const response = await fetch('/submit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const result = await response.json();
+                    alert(result.message);
+
+                    // Clear form after successful submission
+                    this.reset();
+                } catch (error) {
+                    console.error('Error submitting form:', error);
+                    alert('Error submitting form. Please try again.');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
